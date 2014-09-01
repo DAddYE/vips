@@ -33,8 +33,8 @@ _libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if pr
 
 Compiling from source is recommended:
 
-    sudo apt-get install automake build-essential git gobject-introspection libglib2.0-dev \
-      libjpeg-turbo8-dev libpng12-dev
+    sudo apt-get install automake build-essential git gobject-introspection \
+      libglib2.0-dev libjpeg-turbo8-dev libpng12-dev
     git clone https://github.com/jcupitt/libvips.git
     cd libvips
     ./bootstrap.sh
@@ -52,22 +52,24 @@ You can use package from the command line (`go install github.com/daddye/vips/vi
 
 Or simply importing the package and then:
 
-	options := vips.Options{
-		Width:        800,
-		Height:       600,
-		Crop:         false,
-		Extend:       vips.EXTEND_WHITE,
-		Interpolator: vips.BILINEAR,
-		Gravity:      vips.CENTRE,
-		Quality:      95,
-	}
-	f, err := os.Open("/tmp/test.jpg")
-	buf, err := vips.Resize(f, options)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	// do some with your resized image `buf`
+```go
+options := vips.Options{
+	Width:        800,
+	Height:       600,
+	Crop:         false,
+	Extend:       vips.EXTEND_WHITE,
+	Interpolator: vips.BILINEAR,
+	Gravity:      vips.CENTRE,
+	Quality:      95,
+}
+f, err := os.Open("/tmp/test.jpg")
+buf, err := vips.Resize(f, options)
+if err != nil {
+	fmt.Fprintln(os.Stderr, err)
+	return
+}
+// do some with your resized image `buf`
+```
 
 ## Performance
 
