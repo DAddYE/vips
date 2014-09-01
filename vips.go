@@ -13,11 +13,10 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"time"
 	"unsafe"
 )
 
-const DEBUG = true
+const DEBUG = false
 
 var (
 	MARKER_JPEG = []byte{0xff, 0xd8}
@@ -67,14 +66,17 @@ type Options struct {
 }
 
 func init() {
-	C.im_init_world(C.CString("go-vips"))
+	s := C.CString("go-vips")
+	defer C.free(unsafe.Pointer(s))
+	err := C.im_init_world(s)
+	if err != 0 {
+		panic("unable to start vips!")
+	}
 	C.vips_cache_set_max_mem(100 * 1048576) // 100Mb
 	C.vips_cache_set_max(500)
 }
 
 func Resize(reader io.Reader, o Options) ([]byte, error) {
-	started := time.Now()
-
 	// start reading just 2 bytes
 	buf := make([]byte, 2)
 	_, err := reader.Read(buf)
@@ -237,13 +239,17 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 
 	if residual != 0 {
 		// Create interpolator - "bilinear" (default), "bicubic" or "nohalo"
-		interpolator := C.vips_interpolate_new(C.CString(o.Interpolator.String()))
+		is := C.CString(o.Interpolator.String())
+		defer C.free(unsafe.Pointer(is))
+
+		interpolator := C.vips_interpolate_new(is)
+		// C.g_object_unref(C.gpointer(interpolator)) // not sure if this is necessary
+
 		// Perform affine transformation
 		err := C.vips_affine_interpolator(shrunk, &affined, C.double(residual), 0, 0, C.double(residual), interpolator)
 		if err != 0 {
 			return nil, resizeError()
 		}
-		C.g_object_unref(C.gpointer(interpolator))
 	} else {
 		C.vips_copy_0(shrunk, &affined)
 	}
@@ -288,14 +294,11 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	output := colourspaced
 
 	length := C.size_t(0)
-	ptr := unsafe.Pointer(&buf[0])
+	ptr := unsafe.Pointer((*C.uchar)(unsafe.Pointer(&buf[0])))
+
 	C.vips_jpegsave_custom(output, &ptr, &length, 1, C.int(o.Quality), 0)
 
-	if DEBUG { // avoid time of calculate the difference
-		debug("done in %s", time.Since(started))
-	}
-
-	return C.GoBytes(ptr, C.int(length)), nil
+	return buf[:int(length)], nil
 }
 
 func resizeError() error {
