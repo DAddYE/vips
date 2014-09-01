@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/daddye/vips"
@@ -19,6 +20,8 @@ func main() {
 	flag.IntVar(&options.Quality, "quality", 90, "")
 	flag.Parse()
 
+	fmt.Fprintf(os.Stderr, "options: %+v\n", options)
+
 	file, err := os.Open(filename)
 	if err != nil {
 		flag.PrintDefaults()
@@ -26,7 +29,12 @@ func main() {
 		return
 	}
 
-	img, err := vips.Resize(file, options)
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	img, err := vips.Resize(buf, options)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

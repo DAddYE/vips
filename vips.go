@@ -7,10 +7,9 @@ package vips
 import "C"
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"unsafe"
@@ -72,45 +71,30 @@ func init() {
 	if err != 0 {
 		panic("unable to start vips!")
 	}
+	C.vips_concurrency_set(0)
 	C.vips_cache_set_max_mem(100 * 1048576) // 100Mb
 	C.vips_cache_set_max(500)
 }
 
-func Resize(reader io.Reader, o Options) ([]byte, error) {
-	// start reading just 2 bytes
-	buf := make([]byte, 2)
-	_, err := reader.Read(buf)
-	if err != nil {
-		return nil, err
-	}
+func Resize(buf []byte, o Options) ([]byte, error) {
+	// runtime.LockOSThread()
+	// defer runtime.UnlockOSThread()
 
 	// detect (if possible) the file type
 	typ := UNKNOWN
 	switch {
-	case buf[0] == MARKER_JPEG[0] && buf[1] == MARKER_JPEG[1]:
+	case bytes.Equal(buf[:2], MARKER_JPEG):
 		typ = JPEG
-	case buf[0] == MARKER_PNG[0] && buf[1] == MARKER_PNG[1]:
+	case bytes.Equal(buf[:2], MARKER_PNG):
 		typ = PNG
 	default:
 		return nil, errors.New("unknown image format")
 	}
 
-	// now we can read everything
-	rest, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	buf = append(buf, rest...)
-
 	// create an image instance
 	in := C.vips_image_new()
 	defer C.im_close(in)
 	defer C.vips_error_clear()
-
-	// defaults
-	if o.Quality == 0 {
-		o.Quality = 100
-	}
 
 	// feed it
 	switch typ {
@@ -120,7 +104,10 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 		C.vips_pngload_buffer_rand(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &in)
 	}
 
-	debug("options: %+v", o)
+	// defaults
+	if o.Quality == 0 {
+		o.Quality = 100
+	}
 
 	// get WxH
 	inWidth := int(in.Xsize)
@@ -154,6 +141,8 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 		o.Width = inWidth
 		o.Height = inHeight
 	}
+
+	debug("transform from %dx%d to %dx%d", inWidth, inHeight, o.Width, o.Height)
 
 	// shrink
 	shrink := int(math.Floor(factor))
@@ -195,6 +184,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	defer C.im_close(shrunkOnLoad)
 
 	if shrinkOnLoad > 1 {
+		debug("shrink on load %d", shrinkOnLoad)
 		// Recalculate integral shrink and double residual
 		factor = math.Max(factor, 1.0)
 		shrink = int(math.Floor(factor))
@@ -212,6 +202,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	defer C.im_close(shrunk)
 
 	if shrink > 1 {
+		debug("shrink %d", shrink)
 		// Use vips_shrink with the integral reduction
 		err := C.vips_shrink_0(shrunkOnLoad, &shrunk, C.double(float64(shrink)), C.double(float64(shrink)))
 		if err != 0 {
@@ -238,6 +229,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	defer C.im_close(affined)
 
 	if residual != 0 {
+		debug("residual %.2f", residual)
 		// Create interpolator - "bilinear" (default), "bicubic" or "nohalo"
 		is := C.CString(o.Interpolator.String())
 		defer C.free(unsafe.Pointer(is))
@@ -264,6 +256,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	if affinedWidth != o.Width || affinedHeight != o.Height {
 		if o.Crop {
 			// Crop
+			debug("cropping")
 			left, top := sharpCalcCrop(affinedWidth, affinedHeight, o.Width, o.Height, o.Gravity)
 			o.Width = int(math.Min(float64(affinedWidth), float64(o.Width)))
 			o.Height = int(math.Min(float64(affinedHeight), float64(o.Height)))
@@ -273,6 +266,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 			}
 		} else {
 			// Embed
+			debug("embedding with extend %d", o.Extend)
 			left := (o.Width - affinedWidth) / 2
 			top := (o.Height - affinedHeight) / 2
 			err := C.vips_embed_extend(affined, &canvased, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height), C.int(o.Extend))
@@ -281,6 +275,7 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 			}
 		}
 	} else {
+		debug("canvased same as affined")
 		C.vips_copy_0(affined, &canvased)
 	}
 
@@ -294,7 +289,8 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	output := colourspaced
 
 	length := C.size_t(0)
-	ptr := unsafe.Pointer(&buf[0])
+	ptr := C.malloc(C.size_t(len(buf)))
+	defer C.free(ptr)
 
 	C.vips_jpegsave_custom(output, &ptr, &length, 1, C.int(o.Quality), 0)
 
