@@ -29,7 +29,7 @@ _libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if pr
 
     brew install homebrew/science/vips
 
-### Install libvips on LInux
+### Install libvips on Linux
 
 Compiling from source is recommended:
 
