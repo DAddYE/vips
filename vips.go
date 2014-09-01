@@ -294,11 +294,11 @@ func Resize(reader io.Reader, o Options) ([]byte, error) {
 	output := colourspaced
 
 	length := C.size_t(0)
-	ptr := unsafe.Pointer((*C.uchar)(unsafe.Pointer(&buf[0])))
+	ptr := unsafe.Pointer(&buf[0])
 
 	C.vips_jpegsave_custom(output, &ptr, &length, 1, C.int(o.Quality), 0)
 
-	return buf[:int(length)], nil
+	return C.GoBytes(ptr, C.int(length)), nil
 }
 
 func resizeError() error {
