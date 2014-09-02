@@ -5,16 +5,16 @@ int vips_affine_interpolator(VipsImage *in, VipsImage **out, double a, double b,
   return vips_affine(in, out, a, b, c, d, "interpolate", interpolator, NULL);
 };
 
-int vips_jpegload_buffer_rand(void *buf, size_t len, VipsImage **out){
-	return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, NULL);
+int vips_jpegload_buffer_seq(void *buf, size_t len, VipsImage **out){
+	return vips_jpegload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
 };
 
 int vips_jpegload_buffer_shrink(void *buf, size_t len, VipsImage **out, int shrink){
 	return vips_jpegload_buffer(buf, len, out, "shrink", shrink, NULL);
 };
 
-int vips_pngload_buffer_rand(void *buf, size_t len, VipsImage **out){
-	return vips_pngload_buffer(buf, len, out, "access", VIPS_ACCESS_RANDOM, NULL);
+int vips_pngload_buffer_seq(void *buf, size_t len, VipsImage **out){
+	return vips_pngload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
 };
 
 int vips_shrink_0(VipsImage *in, VipsImage **out, double xshrink, double yshrink){
