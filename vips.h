@@ -2,7 +2,7 @@
 #include <vips/vips.h>
 
 int vips_affine_interpolator(VipsImage *in, VipsImage **out, double a, double b, double c, double d, VipsInterpolate *interpolator){
-	return vips_affine(in, out, a, b, c, d, "interpolate", interpolator, NULL);
+  return vips_affine(in, out, a, b, c, d, "interpolate", interpolator, NULL);
 };
 
 int vips_jpegload_buffer_rand(void *buf, size_t len, VipsImage **out){

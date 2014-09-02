@@ -66,14 +66,15 @@ type Options struct {
 
 func init() {
 	s := C.CString("go-vips")
-	defer C.free(unsafe.Pointer(s))
 	err := C.im_init_world(s)
+	C.free(unsafe.Pointer(s))
 	if err != 0 {
 		panic("unable to start vips!")
 	}
+	print("init govips...")
 	C.vips_concurrency_set(0)
-	C.vips_cache_set_max_mem(100 * 1048576) // 100Mb
-	C.vips_cache_set_max(500)
+	C.vips_cache_set_max_mem(0) // 100Mb
+	C.vips_cache_set_max(0)
 }
 
 func Resize(buf []byte, o Options) ([]byte, error) {
@@ -93,8 +94,6 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 
 	// create an image instance
 	in := C.vips_image_new()
-	defer C.im_close(in)
-	defer C.vips_error_clear()
 
 	// feed it
 	switch typ {
@@ -181,8 +180,6 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	}
 
 	shrunkOnLoad := C.vips_image_new()
-	defer C.im_close(shrunkOnLoad)
-
 	if shrinkOnLoad > 1 {
 		debug("shrink on load %d", shrinkOnLoad)
 		// Recalculate integral shrink and double residual
@@ -197,10 +194,9 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	} else {
 		C.vips_copy_0(in, &shrunkOnLoad)
 	}
+	C.g_object_unref(C.gpointer(in))
 
 	shrunk := C.vips_image_new()
-	defer C.im_close(shrunk)
-
 	if shrink > 1 {
 		debug("shrink %d", shrink)
 		// Use vips_shrink with the integral reduction
@@ -223,36 +219,34 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	} else {
 		C.vips_copy_0(shrunkOnLoad, &shrunk)
 	}
+	C.g_object_unref(C.gpointer(shrunkOnLoad))
 
 	// Use vips_affine with the remaining float part
 	affined := C.vips_image_new()
-	defer C.im_close(affined)
-
 	if residual != 0 {
 		debug("residual %.2f", residual)
 		// Create interpolator - "bilinear" (default), "bicubic" or "nohalo"
 		is := C.CString(o.Interpolator.String())
-		defer C.free(unsafe.Pointer(is))
-
 		interpolator := C.vips_interpolate_new(is)
-		// C.g_object_unref(C.gpointer(interpolator)) // not sure if this is necessary
 
 		// Perform affine transformation
 		err := C.vips_affine_interpolator(shrunk, &affined, C.double(residual), 0, 0, C.double(residual), interpolator)
+		C.g_object_unref(C.gpointer(interpolator)) // not sure if this is necessary
+		C.free(unsafe.Pointer(is))
+
 		if err != 0 {
 			return nil, resizeError()
 		}
 	} else {
 		C.vips_copy_0(shrunk, &affined)
 	}
+	C.g_object_unref(C.gpointer(shrunk))
 
 	// Crop/embed
 	affinedWidth := int(affined.Xsize)
 	affinedHeight := int(affined.Ysize)
 
 	canvased := C.vips_image_new()
-	defer C.im_close(canvased)
-
 	if affinedWidth != o.Width || affinedHeight != o.Height {
 		if o.Crop {
 			// Crop
@@ -278,23 +272,27 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		debug("canvased same as affined")
 		C.vips_copy_0(affined, &canvased)
 	}
+	C.g_object_unref(C.gpointer(affined))
 
 	// Always convert to sRGB colour space
 	colourspaced := C.vips_image_new()
-	defer C.im_close(colourspaced)
 
 	C.vips_colourspace_0(canvased, &colourspaced, C.VIPS_INTERPRETATION_sRGB)
+	C.g_object_unref(C.gpointer(canvased))
 
 	// Finally save
-	output := colourspaced
-
 	length := C.size_t(0)
 	ptr := C.malloc(C.size_t(len(buf)))
-	defer C.free(ptr)
 
-	C.vips_jpegsave_custom(output, &ptr, &length, 1, C.int(o.Quality), 0)
+	C.vips_jpegsave_custom(colourspaced, &ptr, &length, 1, C.int(o.Quality), 0)
+	C.g_object_unref(C.gpointer(colourspaced))
+	buf = C.GoBytes(ptr, C.int(length))
 
-	return C.GoBytes(ptr, C.int(length)), nil
+	// cleanup
+	C.free(ptr)
+	C.vips_error_clear()
+
+	return buf, nil
 }
 
 func resizeError() error {
