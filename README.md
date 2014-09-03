@@ -27,7 +27,8 @@ _libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if pr
 
 ### Install libvips on Mac OS
 
-    brew install homebrew/science/vips
+    brew install homebrew/science/vips  --without-fftw --without-libexif --without-libgf \
+    	--without-little-cms --without-orc --without-pango
 
 ### Install libvips on Linux
 
