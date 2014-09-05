@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"unsafe"
 )
 
@@ -65,6 +66,8 @@ type Options struct {
 }
 
 func init() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	err := C.vips_initialize()
 	if err != 0 {
 		C.vips_shutdown()
