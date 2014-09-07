@@ -63,8 +63,9 @@ options := vips.Options{
 	Gravity:      vips.CENTRE,
 	Quality:      95,
 }
-f, err := os.Open("/tmp/test.jpg")
-buf, err := vips.Resize(f, options)
+f, _ := os.Open("/tmp/test.jpg")
+inBuf, _ := ioutil.ReadAll(f)
+buf, err := vips.Resize(inBuf, options)
 if err != nil {
 	fmt.Fprintln(os.Stderr, err)
 	return
