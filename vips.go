@@ -55,15 +55,15 @@ var interpolations = map[Interpolator]string{
 func (i Interpolator) String() string { return interpolations[i] }
 
 type Options struct {
-	Height       int
-	Width        int
-	Crop         bool
-	Enlarge      bool
-	Extend       Extend
-	Embed        bool
-	Interpolator Interpolator
-	Gravity      Gravity
-	Quality      int
+	Height        int
+	Width         int
+	Crop          bool
+	Enlarge       bool
+	Extend        Extend
+	PreserveRatio bool
+	Interpolator  Interpolator
+	Gravity       Gravity
+	Quality       int
 }
 
 func init() {
@@ -263,7 +263,10 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 				return nil, resizeError()
 			}
 		} else {
-			if o.Embed {
+			if o.PreserveRatio {
+				// Scale image preserving its aspect ratio
+				C.vips_copy_0(affined, &canvased)
+			} else {
 				// Embed
 				debug("embedding with extend %d", o.Extend)
 				left := (o.Width - affinedWidth) / 2
@@ -272,9 +275,6 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 				if err != 0 {
 					return nil, resizeError()
 				}
-			} else {
-				// Scale image preserving its aspect ratio
-				C.vips_copy_0(affined, &canvased)
 			}
 		}
 	} else {
