@@ -60,6 +60,7 @@ type Options struct {
 	Crop         bool
 	Enlarge      bool
 	Extend       Extend
+	Embed        bool
 	Interpolator Interpolator
 	Gravity      Gravity
 	Quality      int
@@ -262,13 +263,18 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 				return nil, resizeError()
 			}
 		} else {
-			// Embed
-			debug("embedding with extend %d", o.Extend)
-			left := (o.Width - affinedWidth) / 2
-			top := (o.Height - affinedHeight) / 2
-			err := C.vips_embed_extend(affined, &canvased, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height), C.int(o.Extend))
-			if err != 0 {
-				return nil, resizeError()
+			if o.Embed {
+				// Embed
+				debug("embedding with extend %d", o.Extend)
+				left := (o.Width - affinedWidth) / 2
+				top := (o.Height - affinedHeight) / 2
+				err := C.vips_embed_extend(affined, &canvased, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height), C.int(o.Extend))
+				if err != 0 {
+					return nil, resizeError()
+				}
+			} else {
+				// Scale image preserving its aspect ratio
+				C.vips_copy_0(affined, &canvased)
 			}
 		}
 	} else {
