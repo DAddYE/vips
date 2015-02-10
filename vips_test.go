@@ -1,6 +1,9 @@
 package vips
 
 import (
+	"bytes"
+	"image"
+	"image/jpeg"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -48,4 +51,71 @@ func BenchmarkSerialized(b *testing.B) {
 		}
 	}
 	b.StopTimer()
+}
+
+func TestResize(t *testing.T) {
+	var testCases = []struct {
+		origWidth      int
+		origHeight     int
+		maxWidth       int
+		maxHeight      int
+		expectedWidth  uint
+		expectedHeight uint
+	}{
+		{5, 5, 10, 10, 5, 5},
+		{10, 10, 5, 5, 5, 5},
+		{10, 50, 10, 10, 2, 10},
+		{50, 10, 10, 10, 10, 2},
+		{50, 100, 60, 90, 45, 90},
+		{120, 100, 60, 90, 60, 50},
+		{200, 250, 200, 150, 120, 150},
+	}
+
+	for index, mt := range testCases {
+		img := image.NewGray16(image.Rect(0, 0, mt.origWidth, mt.origHeight))
+		buf := new(bytes.Buffer)
+		err := jpeg.Encode(buf, img, nil)
+		if err != nil {
+			t.Errorf(
+				"%d. jpeg.Encode(buf, img, nil) error: %#v",
+				index, err)
+		}
+
+		options := Options{
+			Width:         mt.maxWidth,
+			Height:        mt.maxHeight,
+			Crop:          false,
+			Enlarge:       false,
+			Extend:        EXTEND_WHITE,
+			PreserveRatio: true,
+			Interpolator:  NOHALO,
+			Gravity:       CENTRE,
+			Quality:       90,
+		}
+
+		newImg, err := Resize(buf.Bytes(), options)
+		if err != nil {
+			t.Errorf(
+				"%d. Resize(imgData, %#v) error: %#v",
+				index, options, err)
+		}
+
+		outImg, err := jpeg.Decode(bytes.NewReader(newImg))
+		if err != nil {
+			t.Errorf(
+				"%d. jpeg.Decode(newImg) error: %#v",
+				index, err)
+		}
+
+		newWidth := uint(outImg.Bounds().Dx())
+		newHeight := uint(outImg.Bounds().Dy())
+		if newWidth != mt.expectedWidth ||
+			newHeight != mt.expectedHeight {
+			t.Fatalf("%d. Resize(imgData, %#v) => "+
+				"width: %v, height: %v, want width: %v, height: %v",
+				index, options,
+				newWidth, newHeight, mt.expectedWidth, mt.expectedHeight,
+			)
+		}
+	}
 }

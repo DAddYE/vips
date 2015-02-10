@@ -84,6 +84,7 @@ func Debug() {
 }
 
 func Resize(buf []byte, o Options) ([]byte, error) {
+	debug("%#+v", o)
 
 	// detect (if possible) the file type
 	typ := UNKNOWN
@@ -159,7 +160,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 
 	// Do not enlarge the output if the input width *or* height are already less than the required dimensions
 	if !o.Enlarge {
-		if inWidth < o.Width || inHeight < o.Height {
+		if inWidth < o.Width && inHeight < o.Height {
 			factor = 1
 			shrink = 1
 			residual = 0
@@ -168,9 +169,11 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		}
 	}
 
-	// We don't use libjpeg shrink-on-load since we are not applying gamma correction
+	debug("factor: %v, shrink: %v, residual: %v", factor, shrink, residual)
+
+	// Try to use libjpeg shrink-on-load
 	shrinkOnLoad := 1
-	if typ == JPEG {
+	if typ == JPEG && shrink >= 2 {
 		switch {
 		case shrink >= 8:
 			factor = factor / 8
@@ -228,6 +231,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 
 	// Use vips_affine with the remaining float part
 	affined := C.vips_image_new()
+	debug("residual: %v", residual)
 	if residual != 0 {
 		debug("residual %.2f", residual)
 		// Create interpolator - "bilinear" (default), "bicubic" or "nohalo"
@@ -264,6 +268,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 			}
 		} else {
 			if o.PreserveRatio {
+				debug("preserve ratio")
 				// Scale image preserving its aspect ratio
 				C.vips_copy_0(affined, &canvased)
 			} else {
