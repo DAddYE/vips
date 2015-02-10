@@ -82,15 +82,14 @@ func TestResize(t *testing.T) {
 		}
 
 		options := Options{
-			Width:         mt.maxWidth,
-			Height:        mt.maxHeight,
-			Crop:          false,
-			Enlarge:       false,
-			Extend:        EXTEND_WHITE,
-			PreserveRatio: true,
-			Interpolator:  NOHALO,
-			Gravity:       CENTRE,
-			Quality:       90,
+			Width:        mt.maxWidth,
+			Height:       mt.maxHeight,
+			Crop:         false,
+			Enlarge:      false,
+			Extend:       EXTEND_WHITE,
+			Interpolator: NOHALO,
+			Gravity:      CENTRE,
+			Quality:      90,
 		}
 
 		newImg, err := Resize(buf.Bytes(), options)
@@ -112,9 +111,11 @@ func TestResize(t *testing.T) {
 		if newWidth != mt.expectedWidth ||
 			newHeight != mt.expectedHeight {
 			t.Fatalf("%d. Resize(imgData, %#v) => "+
-				"width: %v, height: %v, want width: %v, height: %v",
+				"width: %v, height: %v, want width: %v, height: %v, "+
+				"originl size: %vx%v",
 				index, options,
 				newWidth, newHeight, mt.expectedWidth, mt.expectedHeight,
+				mt.origWidth, mt.origHeight,
 			)
 		}
 	}

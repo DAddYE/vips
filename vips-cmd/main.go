@@ -34,6 +34,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
+
 	img, err := vips.Resize(buf, options)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

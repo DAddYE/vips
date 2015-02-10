@@ -23,7 +23,7 @@ use separate command line tools like [jpegoptim](https://github.com/tjko/jpegopt
 
 * [libvips](https://github.com/jcupitt/libvips) v7.38.5+
 
-_libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if present. 
+_libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if present.
 
 ### Install libvips on Mac OS
 
