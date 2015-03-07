@@ -98,16 +98,16 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	}
 
 	// create an image instance
-	in := C.vips_image_new()
-	defer C.vips_thread_shutdown()
+	var image, tmpImage *C.struct__VipsImage
 
 	// feed it
 	switch typ {
 	case JPEG:
-		C.vips_jpegload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &in)
+		C.vips_jpegload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
 	case PNG:
-		C.vips_pngload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &in)
+		C.vips_pngload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
 	}
+	defer C.vips_thread_shutdown()
 
 	// defaults
 	if o.Quality == 0 {
@@ -115,8 +115,8 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	}
 
 	// get WxH
-	inWidth := int(in.Xsize)
-	inHeight := int(in.Ysize)
+	inWidth := int(image.Xsize)
+	inHeight := int(image.Ysize)
 
 	// prepare for factor
 	factor := 0.0
@@ -187,7 +187,6 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		}
 	}
 
-	shrunkOnLoad := C.vips_image_new()
 	if shrinkOnLoad > 1 {
 		debug("shrink on load %d", shrinkOnLoad)
 		// Recalculate integral shrink and double residual
@@ -195,27 +194,27 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		shrink = int(math.Floor(factor))
 		residual = float64(shrink) / factor
 		// Reload input using shrink-on-load
-		err := C.vips_jpegload_buffer_shrink(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &shrunkOnLoad, C.int(shrinkOnLoad))
+		err := C.vips_jpegload_buffer_shrink(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &tmpImage, C.int(shrinkOnLoad))
+		C.g_object_unref(C.gpointer(image))
+		image = tmpImage
 		if err != 0 {
 			return nil, resizeError()
 		}
-	} else {
-		C.vips_copy_0(in, &shrunkOnLoad)
 	}
-	C.g_object_unref(C.gpointer(in))
 
-	shrunk := C.vips_image_new()
 	if shrink > 1 {
 		debug("shrink %d", shrink)
 		// Use vips_shrink with the integral reduction
-		err := C.vips_shrink_0(shrunkOnLoad, &shrunk, C.double(float64(shrink)), C.double(float64(shrink)))
+		err := C.vips_shrink_0(image, &tmpImage, C.double(float64(shrink)), C.double(float64(shrink)))
+		C.g_object_unref(C.gpointer(image))
+		image = tmpImage
 		if err != 0 {
 			return nil, resizeError()
 		}
 
 		// Recalculate residual float based on dimensions of required vs shrunk images
-		shrunkWidth := int(shrunk.Xsize)
-		shrunkHeight := int(shrunk.Ysize)
+		shrunkWidth := int(image.Xsize)
+		shrunkHeight := int(image.Ysize)
 
 		residualx := float64(o.Width) / float64(shrunkWidth)
 		residualy := float64(o.Height) / float64(shrunkHeight)
@@ -224,13 +223,9 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		} else {
 			residual = math.Min(residualx, residualy)
 		}
-	} else {
-		C.vips_copy_0(shrunkOnLoad, &shrunk)
 	}
-	C.g_object_unref(C.gpointer(shrunkOnLoad))
 
 	// Use vips_affine with the remaining float part
-	affined := C.vips_image_new()
 	debug("residual: %v", residual)
 	if residual != 0 {
 		debug("residual %.2f", residual)
@@ -239,22 +234,19 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		interpolator := C.vips_interpolate_new(is)
 
 		// Perform affine transformation
-		err := C.vips_affine_interpolator(shrunk, &affined, C.double(residual), 0, 0, C.double(residual), interpolator)
-		C.g_object_unref(C.gpointer(interpolator))
+		err := C.vips_affine_interpolator(image, &tmpImage, C.double(residual), 0, 0, C.double(residual), interpolator)
+		C.g_object_unref(C.gpointer(image))
+		image = tmpImage
 		C.free(unsafe.Pointer(is))
 		if err != 0 {
 			return nil, resizeError()
 		}
-	} else {
-		C.vips_copy_0(shrunk, &affined)
 	}
-	C.g_object_unref(C.gpointer(shrunk))
 
 	// Crop/embed
-	affinedWidth := int(affined.Xsize)
-	affinedHeight := int(affined.Ysize)
+	affinedWidth := int(image.Xsize)
+	affinedHeight := int(image.Ysize)
 
-	canvased := C.vips_image_new()
 	if affinedWidth != o.Width || affinedHeight != o.Height {
 		if o.Crop {
 			// Crop
@@ -262,7 +254,9 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 			left, top := sharpCalcCrop(affinedWidth, affinedHeight, o.Width, o.Height, o.Gravity)
 			o.Width = int(math.Min(float64(affinedWidth), float64(o.Width)))
 			o.Height = int(math.Min(float64(affinedHeight), float64(o.Height)))
-			err := C.vips_extract_area_0(affined, &canvased, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height))
+			err := C.vips_extract_area_0(image, &tmpImage, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height))
+			C.g_object_unref(C.gpointer(image))
+			image = tmpImage
 			if err != 0 {
 				return nil, resizeError()
 			}
@@ -270,37 +264,34 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 			debug("embedding with extend %d", o.Extend)
 			left := (o.Width - affinedWidth) / 2
 			top := (o.Height - affinedHeight) / 2
-			err := C.vips_embed_extend(affined, &canvased, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height), C.int(o.Extend))
+			err := C.vips_embed_extend(image, &tmpImage, C.int(left), C.int(top), C.int(o.Width), C.int(o.Height), C.int(o.Extend))
+			C.g_object_unref(C.gpointer(image))
+			image = tmpImage
 			if err != 0 {
 				return nil, resizeError()
 			}
-		} else {
-			C.vips_copy_0(affined, &canvased)
 		}
 	} else {
 		debug("canvased same as affined")
-		C.vips_copy_0(affined, &canvased)
 	}
-	C.g_object_unref(C.gpointer(affined))
 
 	// Always convert to sRGB colour space
-	colourspaced := C.vips_image_new()
-
-	C.vips_colourspace_0(canvased, &colourspaced, C.VIPS_INTERPRETATION_sRGB)
-	C.g_object_unref(C.gpointer(canvased))
+	C.vips_colourspace_0(image, &tmpImage, C.VIPS_INTERPRETATION_sRGB)
+	C.g_object_unref(C.gpointer(image))
+	image = tmpImage
 
 	// Finally save
 	length := C.size_t(0)
-	ptr := C.malloc(C.size_t(len(buf)))
+	var ptr unsafe.Pointer
 
-	C.vips_jpegsave_custom(colourspaced, &ptr, &length, 1, C.int(o.Quality), 0)
-	C.g_object_unref(C.gpointer(colourspaced))
+	C.vips_jpegsave_custom(image, &ptr, &length, 1, C.int(o.Quality), 0)
+	C.g_object_unref(C.gpointer(image))
 
 	// get back the buffer
 	buf = C.GoBytes(ptr, C.int(length))
 
 	// cleanup
-	C.free(ptr)
+	C.g_free(C.gpointer(ptr))
 	C.vips_error_clear()
 
 	return buf, nil
