@@ -27,6 +27,12 @@ vips_jpegload_buffer_shrink(void *buf, size_t len, VipsImage **out, int shrink)
 };
 
 int
+vips_webpload_buffer_seq(void *buf, size_t len, VipsImage **out)
+{
+    return vips_webpload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+};
+
+int
 vips_pngload_buffer_seq(void *buf, size_t len, VipsImage **out)
 {
     return vips_pngload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);

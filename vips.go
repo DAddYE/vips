@@ -20,6 +20,7 @@ const DEBUG = false
 
 var (
 	MARKER_JPEG = []byte{0xff, 0xd8}
+	MARKER_WEBP = []byte{0x52, 0x49}
 	MARKER_PNG  = []byte{0x89, 0x50}
 )
 
@@ -28,8 +29,11 @@ type ImageType int
 const (
 	UNKNOWN ImageType = iota
 	JPEG
+	WEBP
 	PNG
 )
+
+const QUALITY = 80
 
 type Interpolator int
 
@@ -69,13 +73,15 @@ type Options struct {
 func init() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+
 	err := C.vips_initialize()
 	if err != 0 {
 		C.vips_shutdown()
 		panic("unable to start vips!")
 	}
+
 	C.vips_concurrency_set(1)
-	C.vips_cache_set_max_mem(100 * 1048576) // 100Mb
+	C.vips_cache_set_max_mem(100 * 1024 * 1024)
 	C.vips_cache_set_max(500)
 }
 
@@ -87,11 +93,15 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	debug("%#+v", o)
 
 	// detect (if possible) the file type
+	chunk := buf[:2]
 	typ := UNKNOWN
+
 	switch {
-	case bytes.Equal(buf[:2], MARKER_JPEG):
+	case bytes.Equal(chunk, MARKER_JPEG):
 		typ = JPEG
-	case bytes.Equal(buf[:2], MARKER_PNG):
+	case bytes.Equal(chunk, MARKER_WEBP):
+		typ = WEBP
+	case bytes.Equal(chunk, MARKER_PNG):
 		typ = PNG
 	default:
 		return nil, errors.New("unknown image format")
@@ -101,17 +111,22 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	var image, tmpImage *C.struct__VipsImage
 
 	// feed it
+	imageLength := C.size_t(len(buf))
+	imageBuf := unsafe.Pointer(&buf[0])
+
 	switch typ {
 	case JPEG:
-		C.vips_jpegload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
+		C.vips_jpegload_buffer_seq(imageBuf, imageLength, &image)
+	case WEBP:
+		C.vips_webpload_buffer_seq(imageBuf, imageLength, &image)
 	case PNG:
-		C.vips_pngload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
+		C.vips_pngload_buffer_seq(imageBuf, imageLength, &image)
 	}
 	defer C.vips_thread_shutdown()
 
 	// defaults
 	if o.Quality == 0 {
-		o.Quality = 100
+		o.Quality = QUALITY
 	}
 
 	// get WxH
