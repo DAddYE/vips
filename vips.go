@@ -7,10 +7,10 @@ package vips
 import "C"
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"runtime"
 	"unsafe"
@@ -93,15 +93,13 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	debug("%#+v", o)
 
 	// detect (if possible) the file type
-	chunk := buf[:2]
 	typ := UNKNOWN
-
 	switch {
-	case bytes.Equal(chunk, MARKER_JPEG):
+	case http.DetectContentType(buf) == "image/jpeg":
 		typ = JPEG
-	case bytes.Equal(chunk, MARKER_WEBP):
+	case http.DetectContentType(buf) == "image/webp":
 		typ = WEBP
-	case bytes.Equal(chunk, MARKER_PNG):
+	case http.DetectContentType(buf) == "image/png":
 		typ = PNG
 	default:
 		return nil, errors.New("unknown image format")
