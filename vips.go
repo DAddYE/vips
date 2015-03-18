@@ -18,10 +18,10 @@ import (
 
 const DEBUG = false
 
-var (
-	MARKER_JPEG = []byte{0xff, 0xd8}
-	MARKER_WEBP = []byte{0x52, 0x49}
-	MARKER_PNG  = []byte{0x89, 0x50}
+const (
+	JPEG_MIME = "image/jpeg"
+	WEBP_MIME = "image/webp"
+	PNG_MIME  = "image/png"
 )
 
 type ImageType int
@@ -95,11 +95,11 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	// detect (if possible) the file type
 	typ := UNKNOWN
 	switch {
-	case http.DetectContentType(buf) == "image/jpeg":
+	case http.DetectContentType(buf) == JPEG_MIME:
 		typ = JPEG
-	case http.DetectContentType(buf) == "image/webp":
+	case http.DetectContentType(buf) == WEBP_MIME:
 		typ = WEBP
-	case http.DetectContentType(buf) == "image/png":
+	case http.DetectContentType(buf) == PNG_MIME:
 		typ = PNG
 	default:
 		return nil, errors.New("unknown image format")

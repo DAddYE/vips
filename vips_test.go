@@ -141,7 +141,7 @@ func TestWebpResize(t *testing.T) {
 		t.Errorf("Resize(imgData, %#v) error: %#v", options, err)
 	}
 
-	if bytes.Equal(newImg[:2], MARKER_WEBP) == false {
+	if http.DetectContentType(newImg) != WEBP_MIME {
 		t.Fatal("Image is not webp valid")
 	}
 }
