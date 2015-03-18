@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/jpeg"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 )
