@@ -236,8 +236,12 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		// Perform affine transformation
 		err := C.vips_affine_interpolator(image, &tmpImage, C.double(residual), 0, 0, C.double(residual), interpolator)
 		C.g_object_unref(C.gpointer(image))
+
 		image = tmpImage
+
 		C.free(unsafe.Pointer(is))
+		C.g_object_unref(C.gpointer(interpolator))
+
 		if err != 0 {
 			return nil, resizeError()
 		}
