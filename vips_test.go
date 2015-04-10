@@ -5,13 +5,14 @@ import (
 	"image"
 	"image/jpeg"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 )
 
 func BenchmarkParallel(b *testing.B) {
 	options := Options{Width: 800, Height: 600, Crop: true}
-	f, err := os.Open("testdata/1.jpg")
+	f, err := os.Open("fixtures/1.jpg")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -34,7 +35,7 @@ func BenchmarkParallel(b *testing.B) {
 
 func BenchmarkSerialized(b *testing.B) {
 	options := Options{Width: 800, Height: 600, Crop: true}
-	f, err := os.Open("testdata/1.jpg")
+	f, err := os.Open("fixtures/1.jpg")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -110,15 +111,40 @@ func TestResize(t *testing.T) {
 
 		newWidth := uint(outImg.Bounds().Dx())
 		newHeight := uint(outImg.Bounds().Dy())
+
 		if newWidth != mt.expectedWidth ||
 			newHeight != mt.expectedHeight {
 			t.Fatalf("%d. Resize(imgData, %#v) => "+
 				"width: %v, height: %v, want width: %v, height: %v, "+
 				"originl size: %vx%v",
 				index, options,
-				newWidth, newHeight, mt.expectedWidth, mt.expectedHeight,
+				newWidth, newHeight,
+				mt.expectedWidth, mt.expectedHeight,
 				mt.origWidth, mt.origHeight,
 			)
 		}
+	}
+}
+
+func TestWebpResize(t *testing.T) {
+	options := Options{Width: 800, Height: 600, Crop: true}
+	img, err := os.Open("fixtures/test.webp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer img.Close()
+
+	buf, err := ioutil.ReadAll(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newImg, err := Resize(buf, options)
+	if err != nil {
+		t.Errorf("Resize(imgData, %#v) error: %#v", options, err)
+	}
+
+	if http.DetectContentType(newImg) != JPEG_MIME {
+		t.Fatal("Image is not webp valid")
 	}
 }

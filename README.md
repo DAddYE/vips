@@ -27,7 +27,7 @@ _libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if pr
 
 ### Install libvips on Mac OS
 
-    brew install vips --without-fftw --without-libexif --without-libgsf \
+    brew install vips --with-webp --without-fftw --without-libexif --without-libgsf \
       --without-little-cms2 --without-orc --without-pango --without-pygobject3 \
       --without-gobject-introspection --without-python
 
@@ -36,12 +36,13 @@ _libvips_ can take advantage of [liborc](http://code.entropywave.com/orc/) if pr
 Compiling from source is recommended:
 
     sudo apt-get install automake build-essential git gobject-introspection \
-      libglib2.0-dev libjpeg-turbo8-dev libpng12-dev gtk-doc-tools
+      libglib2.0-dev webp libjpeg-turbo8-dev libpng12-dev gtk-doc-tools
     git clone https://github.com/jcupitt/libvips.git
     cd libvips
     ./bootstrap.sh
-    ./configure --enable-debug=no --without-python --without-fftw --without-libexif \
-      --without-libgf --without-little-cms --without-orc --without-pango --prefix=/usr
+    ./configure --enable-debug=no --with-webp --without-python --without-fftw \
+      --without-libexif --without-libgf --without-little-cms --without-orc \
+      --without-pango --prefix=/usr
     make
     sudo make install
     sudo ldconfig
