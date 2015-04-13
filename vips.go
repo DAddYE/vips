@@ -290,6 +290,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 
 	C.vips_jpegsave_custom(image, &ptr, &length, 1, C.int(o.Quality), 0)
 	C.g_object_unref(C.gpointer(image))
+	C.g_object_unref(C.gpointer(tmpImage))
 
 	// get back the buffer
 	buf = C.GoBytes(ptr, C.int(length))
