@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,6 +17,15 @@ import (
 var timer = metrics.NewTimer()
 
 func main() {
+
+	options := vips.Options{Extend: vips.EXTEND_WHITE}
+	flag.IntVar(&options.Width, "width", 800, "")
+	flag.IntVar(&options.Height, "height", 600, "")
+	flag.BoolVar(&options.Crop, "crop", false, "")
+	flag.BoolVar(&options.Enlarge, "enlarge", false, "")
+	flag.IntVar(&options.Quality, "quality", 90, "")
+	flag.Parse()
+
 	const N = 5
 	images := make([][]byte, N)
 
@@ -35,8 +45,6 @@ func main() {
 		}
 		images[i] = buf
 	}
-
-	options := vips.Options{Width: 800, Height: 600, Crop: true}
 
 	go printStats()
 
