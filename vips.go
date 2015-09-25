@@ -334,7 +334,7 @@ func resizeError() error {
 type Gravity int
 
 const (
-	CENTRE Gravity = iota
+	CENTRE Gravity = 1 << iota
 	NORTH
 	EAST
 	SOUTH
@@ -342,22 +342,25 @@ const (
 )
 
 func sharpCalcCrop(inWidth, inHeight, outWidth, outHeight int, gravity Gravity) (int, int) {
-	left, top := 0, 0
-	switch gravity {
-	case NORTH:
-		left = (inWidth - outWidth + 1) / 2
-	case EAST:
-		left = inWidth - outWidth
-		top = (inHeight - outHeight + 1) / 2
-	case SOUTH:
-		left = (inWidth - outWidth + 1) / 2
-		top = inHeight - outHeight
-	case WEST:
-		top = (inHeight - outHeight + 1) / 2
-	default:
-		left = (inWidth - outWidth + 1) / 2
-		top = (inHeight - outHeight + 1) / 2
+	left := (inWidth - outWidth + 1) / 2
+	top := (inHeight - outHeight + 1) / 2
+
+	if (gravity & NORTH) != 0 {
+		top = 0
 	}
+
+	if (gravity & EAST) != 0 {
+		left = inWidth - outWidth
+	}
+
+	if (gravity & SOUTH) != 0 {
+		top = inHeight - outHeight
+	}
+
+	if (gravity & WEST) != 0 {
+		left = 0
+	}
+
 	return left, top
 }
 
