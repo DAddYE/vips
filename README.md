@@ -79,11 +79,11 @@ An image can be sharpened after resizing:
 ```go
 sharpen := vips.Sharpen{
     Radius:     1,
-    X1:         1.1
-    Y2:         3
-    Y3:         6
-    M1:         0.3
-    M2:         0.3
+    X1:         1.1,
+    Y2:         3,
+    Y3:         6,
+    M1:         0.3,
+    M2:         0.3,
 }
 options := vips.Options{
 	Width:        800,
