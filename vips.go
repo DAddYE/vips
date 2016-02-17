@@ -37,6 +37,7 @@ const (
 	BICUBIC Interpolator = iota
 	BILINEAR
 	NOHALO
+	LBB
 )
 
 type Extend int
@@ -50,9 +51,19 @@ var interpolations = map[Interpolator]string{
 	BICUBIC:  "bicubic",
 	BILINEAR: "bilinear",
 	NOHALO:   "nohalo",
+	LBB:	  "lbb",
 }
 
 func (i Interpolator) String() string { return interpolations[i] }
+
+type Sharpen struct {
+	Radius		int
+	X1			float64
+	Y2			float64
+	Y3			float64
+	M1			float64
+	M2			float64
+}
 
 type Options struct {
 	Height       int
@@ -64,6 +75,7 @@ type Options struct {
 	Interpolator Interpolator
 	Gravity      Gravity
 	Quality      int
+	Sharpen		 *Sharpen
 }
 
 func init() {
@@ -155,6 +167,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	case o.Width > 0 && o.Height > 0:
 		xf := float64(inWidth) / float64(o.Width)
 		yf := float64(inHeight) / float64(o.Height)
+
 		if o.Crop {
 			factor = math.Min(xf, yf)
 		} else {
@@ -305,6 +318,15 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		}
 	} else {
 		debug("canvased same as affined")
+	}
+
+	if o.Sharpen != nil {
+		err := C.vips_sharpen_0(image, &tmpImage, C.int(o.Sharpen.Radius), C.double(o.Sharpen.X1), C.double(o.Sharpen.Y2), C.double(o.Sharpen.Y3), C.double(o.Sharpen.M1), C.double(o.Sharpen.M2))
+		if err != 0 {
+			return nil, resizeError()
+		}
+		C.g_object_unref(C.gpointer(image))
+		image = tmpImage
 	}
 
 	// Always convert to sRGB colour space
