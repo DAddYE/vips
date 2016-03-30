@@ -64,6 +64,7 @@ type Options struct {
 	Interpolator Interpolator
 	Gravity      Gravity
 	Quality      int
+	Format       ImageType
 }
 
 func init() {
@@ -315,7 +316,12 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	// Finally save
 	length := C.size_t(0)
 	var ptr unsafe.Pointer
-	C.vips_jpegsave_custom(image, &ptr, &length, 1, C.int(o.Quality), 0)
+	switch o.Format {
+	case JPEG, UNKNOWN:
+		C.vips_jpegsave_custom(image, &ptr, &length, 1, C.int(o.Quality), 0)
+	case PNG:
+		C.vips_pngsave_custom(image, &ptr, &length)
+	}
 	C.g_object_unref(C.gpointer(image))
 
 	// get back the buffer
