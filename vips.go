@@ -21,6 +21,7 @@ const DEBUG = false
 var (
 	MARKER_JPEG = []byte{0xff, 0xd8}
 	MARKER_PNG  = []byte{0x89, 0x50}
+	MARKER_GIF  = []byte{0x47, 0x49, 0x46}
 )
 
 type ImageType int
@@ -29,6 +30,7 @@ const (
 	UNKNOWN ImageType = iota
 	JPEG
 	PNG
+	GIF
 )
 
 type Interpolator int
@@ -116,6 +118,8 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		typ = JPEG
 	case bytes.Equal(buf[:2], MARKER_PNG):
 		typ = PNG
+	case bytes.Equal(buf[:3], MARKER_GIF):
+		typ = GIF
 	default:
 		return nil, errors.New("unknown image format")
 	}
@@ -129,6 +133,8 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		C.vips_jpegload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
 	case PNG:
 		C.vips_pngload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
+	case GIF:
+		C.vips_gifload_buffer_seq(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &image)
 	}
 
 	// cleanup

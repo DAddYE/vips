@@ -33,6 +33,12 @@ vips_pngload_buffer_seq(void *buf, size_t len, VipsImage **out)
 };
 
 int
+vips_gifload_buffer_seq(void *buf, size_t len, VipsImage **out)
+{
+    return vips_gifload_buffer(buf, len, out, "access", VIPS_ACCESS_SEQUENTIAL, NULL);
+};
+
+int
 vips_shrink_0(VipsImage *in, VipsImage **out, double xshrink, double yshrink)
 {
     return vips_shrink(in, out, xshrink, yshrink, NULL);
