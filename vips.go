@@ -149,6 +149,17 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	// prepare for factor
 	factor := 0.0
 
+	// Do not enlarge the output if the input width *or* height are already less than the required dimensions
+	if !o.Enlarge {
+		if inWidth < o.Width {
+			o.Width = inWidth
+		}
+
+		if inHeight < o.Height {
+			o.Height = inHeight
+		}
+	}
+
 	// image calculations
 	switch {
 	// Fixed width and height
@@ -185,17 +196,6 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 
 	// residual
 	residual := float64(shrink) / factor
-
-	// Do not enlarge the output if the input width *or* height are already less than the required dimensions
-	if !o.Enlarge {
-		if inWidth < o.Width && inHeight < o.Height {
-			factor = 1
-			shrink = 1
-			residual = 0
-			o.Width = inWidth
-			o.Height = inHeight
-		}
-	}
 
 	debug("factor: %v, shrink: %v, residual: %v", factor, shrink, residual)
 
