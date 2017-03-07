@@ -74,6 +74,40 @@ if err != nil {
 // do some with your resized image `buf`
 ```
 
+An image can be sharpened after resizing:
+
+```go
+sharpen := vips.Sharpen{
+    Radius:     1,
+    X1:         1.1,
+    Y2:         3,
+    Y3:         6,
+    M1:         0.3,
+    M2:         0.3,
+}
+options := vips.Options{
+	Width:        800,
+	Height:       600,
+	Crop:         false,
+	Extend:       vips.EXTEND_WHITE,
+	Interpolator: vips.BILINEAR,
+	Gravity:      vips.CENTRE,
+	Quality:      95,
+	Sharpen:      &sharpen,
+}
+f, _ := os.Open("/tmp/test.jpg")
+inBuf, _ := ioutil.ReadAll(f)
+buf, err := vips.Resize(inBuf, options)
+if err != nil {
+	fmt.Fprintln(os.Stderr, err)
+	return
+}
+// do some with your resized image `buf`
+```
+
+Information on sharpening can be found in the VIPS [documentation](http://www.vips.ecs.soton.ac.uk/supported/current/doc/html/libvips/libvips-convolution.html#vips-sharpen).
+The sample values above give a pleasing on screen sharpening without too many messy artefacts at most sizes.
+
 ## Performance
 
 Test by @lovell

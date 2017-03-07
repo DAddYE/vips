@@ -79,3 +79,13 @@ vips_jpegsave_custom(VipsImage *in, void **buf, size_t *len, int strip, int qual
 {
     return vips_jpegsave_buffer(in, buf, len, "strip", strip, "Q", quality, "optimize_coding", TRUE, "interlace", interlace, NULL);
 }
+
+int
+vips_sharpen_0(VipsImage *in, VipsImage **out, int radius, double x1, double y2, double y3, double m1, double m2) {
+    return vips_sharpen(in, out, "radius", radius, "x1", x1, "y2", y2, "y3", y3, "m1", m1, "m2", m2, NULL);
+};
+
+int
+vips_resize_0(VipsImage *in, VipsImage **out, double scale, VipsInterpolate *interpolator) {
+    return vips_resize(in, out, scale, "interpolate", interpolator, NULL);
+};
