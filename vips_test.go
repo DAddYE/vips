@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"image"
 	"image/jpeg"
+	"image/gif"
+	"golang.org/x/image/webp"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -120,5 +122,105 @@ func TestResize(t *testing.T) {
 				mt.origWidth, mt.origHeight,
 			)
 		}
+	}
+}
+
+func TestResizeGif(t *testing.T) {
+	expectedWidth := 100
+	expectedHeight := 80
+	options := Options{Width: expectedWidth, Height: expectedHeight, Crop: true}
+	f, err := os.Open("testdata/8.gif")
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	origImg, err := gif.Decode(bytes.NewReader(buf))
+	if err != nil {
+		t.Errorf(
+			"GIF. gif.Decode(orgImg) error: %#v",
+			err)
+	}
+	origWidth := int(origImg.Bounds().Dx())
+	origHeight := int(origImg.Bounds().Dy())
+
+	newImg, err := Resize(buf, options)
+	if err != nil {
+		t.Errorf(
+			"GIF. Resize(imgData, %#v) error: %#v",
+			options, err)
+	}
+
+	outImg, err := jpeg.Decode(bytes.NewReader(newImg))
+	if err != nil {
+		t.Errorf(
+			"GIF. jpeg.Decode(newImg) error: %#v",
+			err)
+	}
+
+	newWidth := int(outImg.Bounds().Dx())
+	newHeight := int(outImg.Bounds().Dy())
+	if newWidth != expectedWidth ||
+		newHeight != expectedHeight {
+		t.Fatalf("GIF. Resize(imgData, %#v) => "+
+			"width: %v, height: %v, want width: %v, height: %v, "+
+			"originl size: %vx%v",
+			options,
+			newWidth, newHeight, expectedWidth, expectedHeight,
+			origWidth, origHeight,
+		)
+	}
+}
+
+func TestResizeWebp(t *testing.T) {
+	expectedWidth := 100
+	expectedHeight := 80
+	options := Options{Width: expectedWidth, Height: expectedHeight, Crop: true}
+	f, err := os.Open("testdata/9.webp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	origImg, err := webp.Decode(bytes.NewReader(buf))
+	if err != nil {
+		t.Errorf(
+			"GIF. gif.Decode(orgImg) error: %#v",
+			err)
+	}
+	origWidth := int(origImg.Bounds().Dx())
+	origHeight := int(origImg.Bounds().Dy())
+
+	newImg, err := Resize(buf, options)
+	if err != nil {
+		t.Errorf(
+			"GIF. Resize(imgData, %#v) error: %#v",
+			options, err)
+	}
+
+	outImg, err := jpeg.Decode(bytes.NewReader(newImg))
+	if err != nil {
+		t.Errorf(
+			"GIF. jpeg.Decode(newImg) error: %#v",
+			err)
+	}
+
+	newWidth := int(outImg.Bounds().Dx())
+	newHeight := int(outImg.Bounds().Dy())
+	if newWidth != expectedWidth ||
+		newHeight != expectedHeight {
+		t.Fatalf("GIF. Resize(imgData, %#v) => "+
+			"width: %v, height: %v, want width: %v, height: %v, "+
+			"originl size: %vx%v",
+			options,
+			newWidth, newHeight, expectedWidth, expectedHeight,
+			origWidth, origHeight,
+		)
 	}
 }
